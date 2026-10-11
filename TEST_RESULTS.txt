@@ -1,0 +1,38 @@
+Guardian validation report — security hardening update
+Date: 2026-10-11
+Python: 3.12.3
+discord.py: 2.7.1 / python-dotenv: 1.2.1 (fresh virtualenv from requirements.txt)
+Command: python -m unittest discover -s tests -t . -v
+Result: 107 tests passed (45 original tests unchanged and passing + 62 new)
+
+New coverage:
+- Detection: scheme-less blocked domains (incl. look-alikes, e-mail, userinfo tricks), Discord invite links, dangerous
+  attachment extensions (double extension, trailing dot/space), same text across channels within 10 minutes (window expiry,
+  per-user/guild isolation, long window survives cleanup), newcomer link/attachment limit, forwarded messages, bot/webhook embeds.
+- Policy: channel whitelist exempts invites but never dangerous files or blocked links; user whitelist/owner exempt from all
+  message and join checks; edited messages are re-scanned for invites and newcomer links.
+- New-account protection: timeout until the account reaches the age, skips old/exempt/admin/bot accounts, never shortens
+  an existing longer timeout, works with raid detection disabled, adds no warning points.
+- Audit-log alerts: bot added, permission escalation on roles (incl. @everyone), dangerous role grants, webhook creation,
+  member prune; severity, de-duplication, own actions, stale entries, disabled switch, other servers.
+- Owner ping: only the server owner is allowed to be mentioned (everyone/roles/replied user disabled); respects the switch.
+- /보안점검 (read-only, ephemeral, no settings changed), /차단확장자, /보안설정, /감지기준 per-item ranges, /상태 length, /로그설정 public-channel warning.
+- Storage: setting validation, cache isolation and invalidation, persistence, defaults for settings saved by older versions,
+  consistent online backup with rotation and rate limit, in-memory store skips backup.
+- Reliability: pre-defer rejection of unauthorized callers (final check still uses fresh member data), housekeeping never raises,
+  automatic warning survives a mid-flight whitelist change, latency NaN handled, friendly message when Discord is unreachable.
+
+Mutation check (security hardening): 8 deliberate defects (removed pre-check, widened owner ping, shortened window retention, removed scheme-less
+domain scan, exempted dangerous files in whitelisted channels, uncopied config cache, removed new-account protection,
+removed self-actor exclusion) were each caught by at least one test.
+
+ON/OFF switches (new): master pause stops message/join/new-account/mass-destruction handling and the edited-message
+re-scan, while manual warnings, audit-log alerts and logging keep working; automatic resume (evaluated per event, state tidied
+by the minute loop and logged); indefinite pause with 0 minutes; setting validation; numeric features (newcomer, account age)
+toggle with default restore; cross-post switch; /보안전체, /보안설정, /상태, /보안점검 output; button panel (state shown on
+buttons, instant effect and redraw, master button, owner re-check on every click, ownership change, timeout disables buttons).
+Mutation check (ON/OFF): 11 deliberate defects (pause ignored by each handler, resume time ignored, owner checks removed,
+pause alert not critical, default restore removed, cross-post switch ineffective, auto-resume cleanup removed) were all caught.
+
+Not performed: live Discord connection, real button rendering/layout, real permission/audit-log behaviour, real DM delivery, start.bat on Windows
+(no bot token, server access or Windows environment supplied). Check the Discord-facing behaviour on a test server first.
